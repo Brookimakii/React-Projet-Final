@@ -18,6 +18,7 @@ export default function App() {
         <Stack.Screen name="Record" component={RecordScreen} />
         <Stack.Screen name="RAVE" component={RaveScreen} />
       </Stack.Navigator>
+      <Toast />
     </NavigationContainer>
   );
 }
