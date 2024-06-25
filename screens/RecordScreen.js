@@ -1,81 +1,83 @@
-import {Button, FlatList, TextInput, View} from "react-native";
-import {useState, useEffect } from "react";
-import {useNavigation} from "@react-navigation/native";
-import {Audio} from 'expo-av';
+import React, { useState, useEffect } from 'react';
+import { View, Button, TextInput, FlatList, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
 
-function AudioRecorder(props) {
-  return null;
-}
-
-export default function RecordScreen() {
-
+export default function RecordScreen({ navigation, route  }) {
   const [sound, setSound] = useState();
   const [recording, setRecording] = useState();
   const [permissionResponse, requestPermission] = Audio.usePermissions();
   const [recordingUri, setRecordingUri] = useState();
   const [isRecording, setIsRecording] = useState(false);
-
   const [recordingName, setRecordingName] = useState('');
   const [recordings, setRecordings] = useState([]);
+
+  const handleRecordingComplete = (file) => {
+    setAudioFile(file);
+  };
 
   useEffect(() => {
     loadRecordings();
   }, []);
+
   useEffect(() => {
-    return sound? () => {
-      // Libérer la mémoire allouée à l'audio précédent
-      console.log('Unloading sound...')
+    return sound ? () => {
       sound.unloadAsync();
-    }: undefined;
-  }, [sound])
+    } : undefined;
+  }, [sound]);
 
   const loadRecordings = async () => {
     const files = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory);
     setRecordings(files);
   };
-
-  async function startRecording() {
+  const startRecording = async () => {
     try {
-      // Demander la permission d'accéder au micro
       if (permissionResponse.status !== 'granted') {
         await requestPermission();
       }
-      // Autoriser enregistrement iOS
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
         allowsRecordingIOS: true
       });
-      // Commencer l'enregistrement
-      const {recording} = await Audio.Recording.createAsync(
+      const { recording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
-      )
+      );
       setRecording(recording);
+      setIsRecording(true);
+    } catch (err) {
+      console.error('Failed to start recording', err);
     }
-    catch (err) {
-      console.error(err);
+  };
+
+  const stopRecording = async () => {
+    try {
+      await recording.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false
+      });
+      const uri = recording.getURI();
+      setRecordingUri(uri);
+      setRecording(undefined);
+      setIsRecording(false);
+    } catch (err) {
+      console.error('Failed to stop recording', err);
     }
-  }
+  };
 
-  async function stopRecording() {
-    await recording.stopAndUnloadAsync();
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: false
-    })
-    const uri = recording.getURI()
-    setRecordingUri(uri);
-    setRecording(undefined);
-  }
+  const playSound = async (uri) => {
+    try {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true
+      });
+      const { sound } = await Audio.Sound.createAsync({ uri });
+      setSound(sound);
+      await sound.playAsync();
+    } catch (err) {
+      console.error('Failed to play sound', err);
+    }
+  };
 
-  async function playSound() {
-    await Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true
-    })
-    const { sound } = await Audio.Sound.createAsync({uri:recordingUri});
-    setSound(sound);
-    console.log('Playing sound...');
-    await sound.playAsync();
-  }
-  async function saveRecording(){
+  const saveRecording = async () => {
     if (recordingUri && recordingName) {
       const newFileUri = `${FileSystem.documentDirectory}${recordingName}.wav`;
       await FileSystem.moveAsync({
@@ -89,6 +91,7 @@ export default function RecordScreen() {
       alert('Please enter a name for the recording');
     }
   };
+
   const deleteRecording = async (uri) => {
     try {
       await FileSystem.deleteAsync(uri);
@@ -98,19 +101,16 @@ export default function RecordScreen() {
     }
   };
 
-  async function changeRecordingStatus() {
+  const changeRecordingStatus = () => {
     if (!isRecording) {
       startRecording();
-    }
-    else {
+    } else {
       stopRecording();
     }
-    setIsRecording(!isRecording);
-  }
-
+  };
   return (
     <View style={styles.container}>
-      <Button title={recording ? 'Stop Recording' : 'Start Recording'} onPress={recording ? stopRecording : startRecording} />
+      <Button title={isRecording ? 'Stop Recording' : 'Start Recording'} onPress={changeRecordingStatus} />
       {recordingUri && (
         <>
           <Button title="Play Recording" onPress={() => playSound(recordingUri)} />
