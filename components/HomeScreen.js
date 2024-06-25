@@ -3,43 +3,31 @@ import {Button, TextInput, View} from "react-native";
 import axios from "axios";
 
 export default function HomeScreen({ navigation }) {
+  // State variables to store IP address and port
   const [serverIp, setServerIp] = useState('');
   const [serverPort, setServerPort] = useState('');
-
-  const testConnection = () => {
-    const url = `http://${serverIp}:${serverPort}/`;
-    axios.get(url)
-      .then(response => {
-        if (response.data === "Connexion success !") {
-          Toast.show({
-            type: 'success',
-            text1: 'Success',
-            text2: 'Connected to the server successfully!',
-          });
-          navigation.navigate('Record', { serverIp, serverPort });
-        } else {
-          Toast.show({
-            type: 'error',
-            text1: 'Error',
-            text2: 'Unexpected response from the server.',
-          });
-        }
-      })
-      .catch(error => {
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: `Failed to connect to the server: ${error.message}`,
-        });
-      });
+  
+  // Function to test the connection to the server
+  const testConnection = async () => {
+    try {
+      // Make a GET request to the server
+      const response = await axios.get(`http://${serverIp}:${serverPort}/`);
+      if (response.status === 200) {
+        ToastAndroid.show('Connection success!', ToastAndroid.SHORT);
+      }
+    } catch (error) {
+      console.error('Failed to connect to server', error);
+      ToastAndroid.show('Failed to connect to server', ToastAndroid.SHORT);
+    }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Connect to Server</Text>
+      {/* Inputs for the URL */}
       <TextInput
         style={styles.input}
-        placeholder="Enter server IP"
+        placeholder="Enter the ip address"
         value={serverIp}
         onChangeText={setServerIp}
       />
@@ -50,7 +38,8 @@ export default function HomeScreen({ navigation }) {
         onChangeText={setServerPort}
         keyboardType="numeric"
       />
-      <Button title="Test Connection" onPress={testConnection} />
+      {/* Connect */}
+      <Button title="Connexion Test" onPress={testConnection} />
     </View>
   );
 }

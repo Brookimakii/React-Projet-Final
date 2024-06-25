@@ -4,6 +4,7 @@ import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 
 export default function RecordScreen({ navigation, route  }) {
+  // State variables for managing audio recording and playback
   const [sound, setSound] = useState();
   const [recording, setRecording] = useState();
   const [permissionResponse, requestPermission] = Audio.usePermissions();
@@ -11,34 +12,39 @@ export default function RecordScreen({ navigation, route  }) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingName, setRecordingName] = useState('');
   const [recordings, setRecordings] = useState([]);
-
-  const handleRecordingComplete = (file) => {
-    setAudioFile(file);
-  };
-
+  
+  // Load existing recordings when the component mounts
   useEffect(() => {
     loadRecordings();
   }, []);
 
+  // Clean up sound resources when the component unmounts
   useEffect(() => {
     return sound ? () => {
+      // Free up the Memory from previous audio
       sound.unloadAsync();
     } : undefined;
   }, [sound]);
 
+  // Function to load recordings from the file system
   const loadRecordings = async () => {
     const files = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory);
     setRecordings(files);
   };
+
+  // Function to start recording audio
   const startRecording = async () => {
     try {
+      // Ask for permissions to access mic
       if (permissionResponse.status !== 'granted') {
         await requestPermission();
       }
+      // Allows recordings on IOS
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
         allowsRecordingIOS: true
       });
+      // Start recording
       const { recording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
@@ -49,6 +55,7 @@ export default function RecordScreen({ navigation, route  }) {
     }
   };
 
+  // Function to stop recording audio
   const stopRecording = async () => {
     try {
       await recording.stopAndUnloadAsync();
@@ -64,6 +71,7 @@ export default function RecordScreen({ navigation, route  }) {
     }
   };
 
+  // Function to play a recorded audio file
   const playSound = async (uri) => {
     try {
       await Audio.setAudioModeAsync({
@@ -77,6 +85,7 @@ export default function RecordScreen({ navigation, route  }) {
     }
   };
 
+  // Function to save a recorded audio file with a user-provided name
   const saveRecording = async () => {
     if (recordingUri && recordingName) {
       const newFileUri = `${FileSystem.documentDirectory}${recordingName}.wav`;
@@ -92,6 +101,7 @@ export default function RecordScreen({ navigation, route  }) {
     }
   };
 
+  // Function to delete a recorded audio file
   const deleteRecording = async (uri) => {
     try {
       await FileSystem.deleteAsync(uri);
@@ -101,6 +111,7 @@ export default function RecordScreen({ navigation, route  }) {
     }
   };
 
+  // Toggle recording state (start/stop recording)
   const changeRecordingStatus = () => {
     if (!isRecording) {
       startRecording();
@@ -108,8 +119,10 @@ export default function RecordScreen({ navigation, route  }) {
       stopRecording();
     }
   };
+
   return (
     <View style={styles.container}>
+      {/* Recording button */}
       <Button title={isRecording ? 'Stop Recording' : 'Start Recording'} onPress={changeRecordingStatus} />
       {recordingUri && (
         <>
@@ -136,9 +149,14 @@ export default function RecordScreen({ navigation, route  }) {
           </View>
         )}
       />
+      <Button
+        title="Go to Rave"
+        onPress={() => navigation.navigate('Rave', { serverIp: 'your_server_ip', serverPort: 'your_server_port' })}
+      />
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
